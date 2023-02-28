@@ -1,11 +1,6 @@
 mod image_utils;
 use image_utils::{defaults::Defaults, image_reader::WorkingImage};
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
-
-#[wasm_bindgen(start)]
-pub fn main() -> Result<(), JsValue> {
-    Ok(())
-}
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
 extern "C" {
