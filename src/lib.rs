@@ -1,14 +1,14 @@
 mod image_utils;
 use image_utils::{defaults::Defaults, image_reader::WorkingImage};
-use wasm_bindgen::prelude::wasm_bindgen;
+// use wasm_bindgen::prelude::wasm_bindgen;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
+// #[wasm_bindgen]
+// extern "C" {
+//     #[wasm_bindgen(js_namespace = console)]
+//     fn log(s: &str);
+// }
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 pub fn get_image_color_palette(
     unit8arr: &[u8],
     extension: &str,
