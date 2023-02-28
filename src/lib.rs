@@ -1,4 +1,5 @@
 mod image_utils;
+use image_utils::defaults::Defaults;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen(start)]
@@ -7,19 +8,22 @@ pub fn main() -> Result<(), JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn aver(unit8arr: &[u8]) -> Vec<u8> {
-    let mut img = image_utils::image_reader::WorkingImage::new(unit8arr);
-    img.merge_palette_with_image()
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[wasm_bindgen]
+pub fn get_image_color_palette(
+    unit8arr: &[u8],
+    extension: &str,
+    palette_size: Option<u32>,
+) -> Vec<u8> {
+    let defaults = match palette_size {
+        Some(p) => Defaults::get_custom(p, 5, 15),
+        None => Defaults::get(),
+    };
 
-//     #[test]
-//     fn it_works() {
-//         // aver()
-//         // let result = add(2, 2);
-//         // assert_eq!(result, 4);
-//     }
-// }
+    let mut img = image_utils::image_reader::WorkingImage::new(unit8arr, extension, defaults);
+    img.merge_palette_with_image()
+}

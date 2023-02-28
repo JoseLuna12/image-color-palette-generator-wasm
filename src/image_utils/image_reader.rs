@@ -3,7 +3,7 @@ use std::io::{Cursor, Read, Seek};
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageFormat, Rgba};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use super::image_palette::ImagePalette;
+use super::{defaults::Defaults, image_palette::ImagePalette};
 
 #[wasm_bindgen]
 extern "C" {
@@ -16,50 +16,65 @@ pub struct ImageInformation {
     pub dimensions: (u32, u32),
     pub extra_y_space: u32,
     pub xspace_stepper: u32,
+    pub extension: ImageFormat,
 }
 
 pub struct WorkingImage {
+    defaults: Defaults,
     information: ImageInformation,
     image: DynamicImage,
     result: Option<DynamicImage>,
 }
 
 impl WorkingImage {
-    pub fn new(buffer: &[u8]) -> Self {
-        let image = WorkingImage::load_image_from_buffer(buffer);
-        let information = WorkingImage::get_information_from_image(&image);
+    pub fn new(buffer: &[u8], extension: &str, defaults: Defaults) -> Self {
+        let format = match extension {
+            "jpeg" | "jpg" => ImageFormat::Jpeg,
+            _ => {
+                log("image not supported");
+                panic!("Image Not supported");
+            }
+        };
+
+        let image = WorkingImage::load_image_from_buffer(buffer, format);
+        let information = WorkingImage::get_information_from_image(&image, format, &defaults);
 
         WorkingImage {
+            defaults,
             image,
             information,
             result: None,
         }
     }
 
-    pub fn get_information_from_image(image: &DynamicImage) -> ImageInformation {
+    pub fn get_information_from_image(
+        image: &DynamicImage,
+        extension: ImageFormat,
+        defaults: &Defaults,
+    ) -> ImageInformation {
         let (width, height) = image.dimensions();
-        let default_percentage = 25;
 
         ImageInformation {
-            persentage: default_percentage,
+            persentage: defaults.default_y_space.get(),
             dimensions: (width, height),
-            extra_y_space: (default_percentage * height) / 100,
-            xspace_stepper: width / (10),
+            extra_y_space: (defaults.default_y_space.get() * height) / 100,
+            xspace_stepper: width / (defaults.palette_quantity.get() - 1),
+            extension,
         }
     }
 
-    pub fn load_image_from_buffer(buffer: &[u8]) -> DynamicImage {
-        match image::load_from_memory(buffer) {
+    pub fn load_image_from_buffer(buffer: &[u8], format: ImageFormat) -> DynamicImage {
+        match image::load_from_memory_with_format(buffer, format) {
             Ok(img) => img,
             Err(error) => {
-                log("There was a problem opening the file");
+                log(&format!("There was a problem opening the file {}", error));
                 panic!("There was a problem opening the file: {:?}", error)
             }
         }
     }
 
     pub fn load_color_palette(&self) -> Vec<ImageBuffer<Rgba<u8>, Vec<u8>>> {
-        let palette_colors = ImagePalette::new(&self.image);
+        let palette_colors = ImagePalette::new(&self.image, &self.defaults);
         let palette_images = palette_colors.generate_palette_images(&self.information);
         palette_images
     }
@@ -102,7 +117,7 @@ impl WorkingImage {
         let mut memory_cursor: Cursor<Vec<u8>> = Cursor::new(Vec::new());
 
         if let Some(image) = &self.result {
-            match image.write_to(&mut memory_cursor, ImageFormat::Jpeg) {
+            match image.write_to(&mut memory_cursor, self.information.extension) {
                 Ok(c) => c,
                 Err(err) => {
                     log(&format!(

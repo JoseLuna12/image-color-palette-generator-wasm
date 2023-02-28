@@ -47,10 +47,15 @@
     <img id="image" src="" alt="" />
 
     <script type="module">
-      import init, { aver } from "./pkg/color_palette_gen.js";
+      import init, { get_image_color_palette } from "./pkg/color_palette_gen.js";
 
       const imageToShow = document.getElementById("image");
       const loaderDiv = document.getElementById("loader");
+
+      const fileData = {
+        extension: "",
+        file: []
+      }
 
       
       init().then(() => {
@@ -61,6 +66,8 @@
         async function onFileSelection(files) {
           loaderDiv.style.display = "flex";
           const file = files.target.files[0];
+          fileData.file = file
+          fileData.extension = file.name.split('.').pop()
           const buffer = await getImageAsArrayBuffer(file);
 
           await generateImage(new Uint8Array(buffer));
@@ -68,8 +75,13 @@
       });
 
       const generateImage = async (unit8Image) => {
-        let photo = await createPromise(() => aver(new Uint8Array(unit8Image)));
-        displayPhoto(photo);
+        try{
+
+            let photo = await createPromise(() => get_image_color_palette(new Uint8Array(unit8Image), fileData.extension, 21));
+            displayPhoto(photo);
+        }catch (e) {
+            console.log(e)
+        }
       };
 
       const displayPhoto = async (photo) => {

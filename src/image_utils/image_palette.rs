@@ -3,7 +3,7 @@ use palette_extract::{
     get_palette_with_options, Color, MaxColors, PixelEncoding, PixelFilter, Quality,
 };
 
-use super::image_reader::ImageInformation;
+use super::{defaults::Defaults, hsv_util::HSVColor, image_reader::ImageInformation};
 
 pub struct ImagePalette {
     pub palette: Vec<Color>,
@@ -11,23 +11,63 @@ pub struct ImagePalette {
 }
 
 impl ImagePalette {
-    pub fn new(image: &DynamicImage) -> Self {
-        let palette = ImagePalette::get_palette(image);
+    pub fn new(image: &DynamicImage, defaults: &Defaults) -> Self {
+        let palette = ImagePalette::get_palette(image, defaults.palette_quantity.get());
+        let reordered_palette = ImagePalette::rearrange_pallete(palette);
         ImagePalette {
-            palette,
-            default_border: 5,
+            palette: reordered_palette,
+            default_border: defaults.palette_border.get(),
         }
     }
 
-    pub fn get_palette(image: &DynamicImage) -> Vec<Color> {
+    pub fn get_palette(image: &DynamicImage, max_colors: u32) -> Vec<Color> {
         let pixels = image.as_bytes();
         get_palette_with_options(
             pixels,
             PixelEncoding::Rgb,
             Quality::new(1),
-            MaxColors::new(11),
+            MaxColors::new(max_colors as u8),
             PixelFilter::None,
         )
+    }
+
+    fn rearrange_pallete(palette: Vec<Color>) -> Vec<Color> {
+        let mut new_palette: Vec<Color> = Vec::from(palette);
+        let repetitions = 8f32;
+
+        new_palette.sort_by(|a, b| {
+            let hsv_color_a = HSVColor::new(a.r, a.g, a.b);
+            let hsv_color_b = HSVColor::new(b.r, b.g, b.b);
+
+            let get_compare_values = |hsv_val: HSVColor| {
+                let lum = match hsv_val.luminosity {
+                    Some(l) => l,
+                    None => panic!(),
+                };
+
+                match hsv_val.result {
+                    Some(hsv) => {
+                        let h2 = hsv.h * repetitions;
+                        let mut lum2 = lum * repetitions;
+                        let mut v2 = hsv.v * repetitions;
+
+                        if h2 % 2f32 == 1f32 {
+                            v2 = repetitions - v2;
+                            lum2 = repetitions - lum;
+                        }
+
+                        return (h2, lum2, v2);
+                    }
+                    None => panic!(""),
+                }
+            };
+
+            let a_compare = get_compare_values(hsv_color_a);
+            let b_compare = get_compare_values(hsv_color_b);
+
+            b_compare.partial_cmp(&a_compare).unwrap()
+        });
+        new_palette
     }
 
     pub fn generate_palette_images(
@@ -96,3 +136,5 @@ fn get_pallete_square_color(
         square_color
     }
 }
+
+//https://www.alanzucconi.com/2015/09/30/colour-sorting/
