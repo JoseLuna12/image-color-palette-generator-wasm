@@ -27,6 +27,18 @@ pub struct WorkingImage {
 }
 
 impl WorkingImage {
+    pub fn new_file(path: &str, defaults: Defaults) -> WorkingImage {
+        let img = image::open(path).unwrap();
+        let format = ImageFormat::Jpeg;
+        let information = WorkingImage::get_information_from_image(&img, format, &defaults);
+        WorkingImage {
+            defaults,
+            image: img,
+            information,
+            result: None,
+        }
+    }
+
     pub fn new(buffer: &[u8], extension: &str, defaults: Defaults) -> Self {
         let format = match extension {
             "jpeg" | "jpg" => ImageFormat::Jpeg,
@@ -90,6 +102,15 @@ impl WorkingImage {
         };
 
         self.result = Some(new_img);
+    }
+
+    pub fn save_image_with_palette(&mut self, name: &str) {
+        self.merge_palette_with_image();
+        let result = self.result.clone();
+        match result {
+            Some(val) => val.save(format!("output/{}", name)).unwrap(),
+            None => panic!("no image"),
+        };
     }
 
     pub fn merge_palette_with_image(&mut self) -> Vec<u8> {

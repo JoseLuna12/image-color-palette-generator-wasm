@@ -1,5 +1,5 @@
 mod image_utils;
-use image_utils::defaults::Defaults;
+use image_utils::{defaults::Defaults, image_reader::WorkingImage};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen(start)]
@@ -26,4 +26,11 @@ pub fn get_image_color_palette(
 
     let mut img = image_utils::image_reader::WorkingImage::new(unit8arr, extension, defaults);
     img.merge_palette_with_image()
+}
+
+pub fn get_image_palette_file(path: String) {
+    let defaults = Defaults::get_custom(21, 5, 15);
+    //save_image_with_palette
+    let mut img = WorkingImage::new_file(&path, defaults);
+    img.save_image_with_palette("test.jpeg")
 }
