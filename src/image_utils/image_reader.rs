@@ -30,6 +30,7 @@ impl WorkingImage {
     pub fn new(buffer: &[u8], extension: &str, defaults: Defaults) -> Self {
         let format = match extension {
             "jpeg" | "jpg" => ImageFormat::Jpeg,
+            "png" => ImageFormat::Png,
             _ => {
                 log("image not supported");
                 panic!("Image Not supported");
@@ -74,16 +75,27 @@ impl WorkingImage {
     }
 
     pub fn load_color_palette(&self) -> Vec<ImageBuffer<Rgba<u8>, Vec<u8>>> {
-        let palette_colors = ImagePalette::new(&self.image, &self.defaults);
+        let palette_colors = ImagePalette::new(&self.image, &self.defaults, &self.information);
         let palette_images = palette_colors.generate_palette_images(&self.information);
         palette_images
     }
 
     pub fn copy_image(&mut self) {
-        let mut new_img = DynamicImage::new_rgb8(
-            self.information.dimensions.0,
-            self.information.dimensions.1 + self.information.extra_y_space,
-        );
+        let mut new_img = match self.information.extension {
+            ImageFormat::Png => DynamicImage::new_rgb8(
+                self.information.dimensions.0,
+                self.information.dimensions.1 + self.information.extra_y_space,
+            ),
+            ImageFormat::Jpeg => DynamicImage::new_rgb8(
+                self.information.dimensions.0,
+                self.information.dimensions.1 + self.information.extra_y_space,
+            ),
+            _ => DynamicImage::new_rgb8(
+                self.information.dimensions.0,
+                self.information.dimensions.1 + self.information.extra_y_space,
+            ),
+        };
+
         match new_img.copy_from(&self.image, 0, 0) {
             Ok(_) => log("Success creating new image"),
             Err(e) => log(&format!("erro creating image {}", e)),

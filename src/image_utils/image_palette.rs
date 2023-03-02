@@ -1,4 +1,4 @@
-use image::{DynamicImage, ImageBuffer, Rgba};
+use image::{DynamicImage, ImageBuffer, ImageFormat, Rgba};
 use palette_extract::{
     get_palette_with_options, Color, MaxColors, PixelEncoding, PixelFilter, Quality,
 };
@@ -10,25 +10,86 @@ pub struct ImagePalette {
     pub default_border: u32,
 }
 
+pub enum BlackThreshold {
+    Low,
+    Med,
+    High,
+}
+
 impl ImagePalette {
-    pub fn new(image: &DynamicImage, defaults: &Defaults) -> Self {
-        let palette = ImagePalette::get_palette(image, defaults.palette_quantity.get());
-        let reordered_palette = ImagePalette::rearrange_pallete(palette);
+    pub fn new(image: &DynamicImage, defaults: &Defaults, information: &ImageInformation) -> Self {
+        let palette = ImagePalette::get_palette(
+            image,
+            defaults.palette_quantity.get(),
+            information.extension,
+        );
+        let filtered = ImagePalette::filter_black_color(palette, defaults);
+        let mut reordered_palette = ImagePalette::rearrange_pallete(filtered);
+
+        while (reordered_palette.len() as u32) > defaults.palette_quantity.get() - 1 {
+            reordered_palette.pop();
+        }
+
         ImagePalette {
             palette: reordered_palette,
             default_border: defaults.palette_border.get(),
         }
     }
 
-    pub fn get_palette(image: &DynamicImage, max_colors: u32) -> Vec<Color> {
+    pub fn get_palette(
+        image: &DynamicImage,
+        max_colors: u32,
+        encode_information: ImageFormat,
+    ) -> Vec<Color> {
         let pixels = image.as_bytes();
+
+        let encoding = match encode_information {
+            ImageFormat::Png => PixelEncoding::Rgba,
+            ImageFormat::Jpeg => PixelEncoding::Rgb,
+            _ => PixelEncoding::Rgb,
+        };
+
         get_palette_with_options(
             pixels,
-            PixelEncoding::Rgb,
+            encoding,
             Quality::new(1),
-            MaxColors::new(max_colors as u8),
+            MaxColors::new(max_colors as u8 + 10),
             PixelFilter::None,
         )
+    }
+
+    pub fn filter_black_color(palette: Vec<Color>, defaults: &Defaults) -> Vec<Color> {
+        // let re_arranged_palette = ImagePalette::rearrange_pallete(palette);
+        let mut new_filtered: Vec<Color> = Vec::new();
+        let mut rejected: Vec<Color> = Vec::new();
+
+        let threshold = match defaults.black_threshold {
+            BlackThreshold::Low => 3f32,
+            BlackThreshold::Med => 4f32,
+            BlackThreshold::High => 5f32,
+        };
+
+        for pal in palette {
+            let r = pal.r;
+            let g = pal.g;
+            let b = pal.b;
+
+            let hsv = HSVColor::new(r, g, b);
+            if let Some(lum) = hsv.luminosity {
+                if lum > threshold {
+                    new_filtered.push(pal);
+                } else {
+                    rejected.push(pal)
+                }
+            }
+        }
+
+        while (new_filtered.len() as u32) < defaults.palette_quantity.get() - 1 {
+            if let Some(rej_color) = rejected.iter().next() {
+                new_filtered.push(*rej_color)
+            };
+        }
+        new_filtered
     }
 
     fn rearrange_pallete(palette: Vec<Color>) -> Vec<Color> {

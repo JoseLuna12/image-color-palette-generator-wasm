@@ -1,3 +1,5 @@
+use super::image_palette::BlackThreshold;
+
 pub struct DefaultPaletteQuantity(u32);
 
 impl DefaultPaletteQuantity {
@@ -39,6 +41,7 @@ pub struct Defaults {
     pub palette_quantity: DefaultPaletteQuantity,
     pub palette_border: DefaultPaletteBorder,
     pub default_y_space: DefaultYSpace,
+    pub black_threshold: BlackThreshold,
 }
 
 impl Defaults {
@@ -51,18 +54,26 @@ impl Defaults {
             palette_quantity,
             palette_border,
             default_y_space,
+            black_threshold: BlackThreshold::High,
         }
     }
 
-    pub fn get_custom(palette: u32, border: u32, y_space: u32) -> Self {
+    pub fn get_custom(palette: u32, border: u32, y_space: u32, threshold: String) -> Self {
         let palette_quantity = DefaultPaletteQuantity::new(palette);
         let palette_border = DefaultPaletteBorder::new(border);
         let default_y_space = DefaultYSpace::new(y_space);
+        let black_threshold = match threshold.as_str() {
+            "min" => BlackThreshold::Low,
+            "med" => BlackThreshold::Med,
+            "high" => BlackThreshold::High,
+            _ => BlackThreshold::High,
+        };
 
         Defaults {
             palette_quantity,
             palette_border,
             default_y_space,
+            black_threshold,
         }
     }
 }

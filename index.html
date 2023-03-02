@@ -77,7 +77,7 @@
       const generateImage = async (unit8Image) => {
         try{
 
-            let photo = await createPromise(() => get_image_color_palette(new Uint8Array(unit8Image), fileData.extension, 21));
+            let photo = await createPromise(() => get_image_color_palette(new Uint8Array(unit8Image), fileData.extension));
             displayPhoto(photo);
         }catch (e) {
             console.log(e)
